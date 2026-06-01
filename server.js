@@ -63,6 +63,15 @@ app.post("/send-notification", async (req, res) => {
 
     response.responses.forEach((resp, index) => {
       if (!resp.success) {
+          console.error(
+              `Token ${tokens[index]} failed:`,
+              resp.error
+          );
+      }
+    });
+
+    response.responses.forEach((resp, index) => {
+      if (!resp.success) {
         const code = resp.error?.code;
 
         if (
