@@ -41,59 +41,45 @@ app.post("/register-token", (req, res) => {
 });
 
 app.post("/send-notification", async (req, res) => {
-  try {
-    if (deviceTokens.size === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No registered devices",
-      });
+    try {
+        const tokens = [...deviceTokens];
+
+        const response = await admin.messaging().sendEachForMulticast({
+            notification: {
+                title: "Notification",
+                body: "Riya agreed 😇."
+            },
+            tokens
+        });
+
+        const errors = [];
+
+        response.responses.forEach((resp, index) => {
+            if (!resp.success) {
+                errors.push({
+                    token: tokens[index],
+                    code: resp.error?.code,
+                    message: resp.error?.message
+                });
+            }
+        });
+
+        return res.json({
+            success: true,
+            successCount: response.successCount,
+            failureCount: response.failureCount,
+            errors
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: {
+                message: error.message,
+                stack: error.stack
+            }
+        });
     }
-
-    const tokens = [...deviceTokens];
-
-    const message = {
-      notification: {
-        title: "Notification",
-        body: "Riya agreed 😇.",
-      },
-      tokens,
-    };
-
-    const response = await admin.messaging().sendEachForMulticast(message);
-
-    response.responses.forEach((resp, index) => {
-      if (!resp.success) {
-          console.error(
-              `Token ${tokens[index]} failed:`,
-              resp.error
-          );
-      }
-    });
-
-    response.responses.forEach((resp, index) => {
-      if (!resp.success) {
-        const code = resp.error?.code;
-
-        if (
-          code === "messaging/registration-token-not-registered" ||
-          code === "messaging/invalid-registration-token"
-        ) {
-          deviceTokens.delete(tokens[index]);
-        }
-      }
-    });
-
-    res.json({
-      success: true,
-      successCount: response.successCount,
-      failureCount: response.failureCount,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
 });
 
 app.get("/tokens", (req, res) => {
